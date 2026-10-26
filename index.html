@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anwesenheitsliste</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+            --fill: #003885;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        @media(min-width: 768px) {
+            header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+        }
+        header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+        nav {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+        }
+        nav button {
+            background: none;
+            border: none;
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 0.375rem;
+            color: var(--text);
+        }
+        nav button:hover, nav button.active {
+            background-color: var(--primary);
+            color: white;
+        }
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        button.primary {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        button.primary:hover {
+            background-color: var(--primary-hover);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background-color: #f1f5f9;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            width: 100%;
+            max-width: 500px;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+        }
+        .kids-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        .kids-table th, .kids-table td {
+            padding: 0.5rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .kids-table th {
+            background-color: #f1f5f9;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Anwesenheitsliste</h1>
+        <nav>
+            <button onclick="showTab('dashboard')" id="btn-dashboard" class="active">Dashboard</button>
+            <button onclick="showTab('events')" id="btn-events">Veranstaltungen</button>
+            <button onclick="showTab('teilnehmer')" id="btn-teilnehmer">Teilnehmer</button>
+        </nav>
+    </header>
+
+    <main id="app">
+        <!-- Dashboard -->
+        <section id="dashboard" class="tab-content">
+            <div class="card">
+                <h2>Übersicht</h2>
+                <p>Aktive Veranstaltungen: <span id="stat-events">0</span></p>
+                <p>Gesamt Teilnehmer: <span id="stat-teilnehmer">0</span></p>
+            </div>
+        </section>
+
+        <!-- Veranstaltungen -->
+        <section id="events" class="tab-content" style="display:none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Veranstaltungen</h2>
+                <button class="primary" onclick="showEventModal()">+ Neue Veranstaltung</button>
+            </div>
+            <div id="events-list"></div>
+        </section>
+
+        <!-- Teilnehmer -->
+        <section id="teilnehmer" class="tab-content" style="display:none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Teilnehmerstamm</h2>
+                <button class="primary" onclick="showTeilnehmerModal()">+ Neuer Teilnehmer</button>
+            </div>
+            <div id="teilnehmer-list"></div>
+        </section>
+    </main>
+
+    <!-- Modal -->
+    <div id="modal" class="modal" style="display:none;">
+        <div class="modal-content" id="modal-body"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboard();
+            loadEvents();
+            loadTeilnehmer();
+        });
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).style.display = 'block';
+            document.getElementById('btn-' + tabId).classList.add('active');
+        }
+
+        async function loadDashboard() {
+            try {
+                const [eventsRes, teilnehmerRes] = await Promise.all([
+                    fetch('/api/events'),
+                    fetch('/api/teilnehmer')
+                ]);
+                const events = await eventsRes.json();
+                const teilnehmer = await teilnehmerRes.json();
+
+                document.getElementById('stat-events').innerText = events.length;
+                document.getElementById('stat-teilnehmer').innerText = teilnehmer.length;
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function loadEvents() {
+            try {
+                const res = await fetch('/api/events');
+                const events = await res.json();
+                const list = document.getElementById('events-list');
+                
+                if (events.length === 0) {
+                    list.innerHTML = '<p>Keine Veranstaltungen vorhanden.</p>';
+                    return;
+                }
+
+                list.innerHTML = events.map(ev => `
+                    <div class="card">
+                        <h3>${ev.name}</h3>
+                        <p>Datum: ${ev.datum || 'Unbekannt'}</p>
+                        <button class="primary" onclick="openAnwesenheit(${ev.id}, '${ev.name}')">Anwesenheit verwalten</button>
+                    </div>
+                `).join('');
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        async function loadTeilnehmer() {
+            try {
+                const res = await fetch('/api/teilnehmer');
+                const teilnehmer = await res.json();
+                const list = document.getElementById('teilnehmer-list');
+                
+                if (teilnehmer.length === 0) {
+                    list.innerHTML = '<p>Keine Teilnehmer vorhanden.</p>';
+                    return;
+                }
+
+                list.innerHTML = `
+                    <table class="kids-table">
+                        <thead>
+                            <tr><th>Name</th><th>E-Mail</th></tr>
+                        </thead>
+                        <tbody>
+                            ${teilnehmer.map(t => `<tr><td>${t.name}</td><td>${t.email || '-'}</td></tr>`).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        function showEventModal() {
+            const modal = document.getElementById('modal');
+            const body = document.getElementById('modal-body');
+            body.innerHTML = `
+                <h3>Neue Veranstaltung</h3>
+                <form id="event-form" onsubmit="saveEvent(event)">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" id="event-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Datum</label>
+                        <input type="date" id="event-datum" required>
+                    </div>
+                    <button type="submit" class="primary">Speichern</button>
+                    <button type="button" onclick="closeModal()">Abbrechen</button>
+                </form>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        function showTeilnehmerModal() {
+            const modal = document.getElementById('modal');
+            const body = document.getElementById('modal-body');
+            body.innerHTML = `
+                <h3>Neuer Teilnehmer</h3>
+                <form id="teilnehmer-form" onsubmit="saveTeilnehmer(event)">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" id="teilnehmer-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>E-Mail</label>
+                        <input type="email" id="teilnehmer-email">
+                    </div>
+                    <button type="submit" class="primary">Speichern</button>
+                    <button type="button" onclick="closeModal()">Abbrechen</button>
+                </form>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        async function saveEvent(e) {
+            e.preventDefault();
+            const name = document.getElementById('event-name').value;
+            const datum = document.getElementById('event-datum').value;
+
+            await fetch('/api/events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, datum })
+            });
+
+            closeModal();
+            loadEvents();
+            loadDashboard();
+        }
+
+        async function saveTeilnehmer(e) {
+            e.preventDefault();
+            const name = document.getElementById('teilnehmer-name').value;
+            const email = document.getElementById('teilnehmer-email').value;
+
+            await fetch('/api/teilnehmer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email })
+            });
+
+            closeModal();
+            loadTeilnehmer();
+            loadDashboard();
+        }
+
+        async function openAnwesenheit(eventId, eventName) {
+            const modal = document.getElementById('modal');
+            const body = document.getElementById('modal-body');
+
+            const [teilnehmerRes, anwesendRes] = await Promise.all([
+                fetch('/api/teilnehmer'),
+                fetch(`/api/events/${eventId}/anwesenheit`)
+            ]);
+            const teilnehmer = await teilnehmerRes.json();
+            const anwesend = await anwesendRes.json();
+            const anwesendIds = new Set(anwesend.map(a => a.teilnehmer_id));
+
+            body.innerHTML = `
+                <h3>Anwesenheit: ${eventName}</h3>
+                <form id="anwesenheit-form" onsubmit="saveAnwesenheit(event, ${eventId})">
+                    <div class="form-group" style="max-height: 300px; overflow-y: auto;">
+                        ${teilnehmer.map(t => `
+                            <div class="checkbox-group">
+                                <input type="checkbox" name="teilnehmer" value="${t.id}" ${anwesendIds.has(t.id) ? 'checked' : ''}>
+                                <span>${t.name}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button type="submit" class="primary">Speichern</button>
+                    <button type="button" onclick="closeModal()">Schließen</button>
+                </form>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        async function saveAnwesenheit(e, eventId) {
+            e.preventDefault();
+            const checked = Array.from(e.target.querySelectorAll('input[name="teilnehmer"]:checked')).map(el => parseInt(el.value));
+
+            await fetch(`/api/events/${eventId}/anwesenheit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ teilnehmer_ids: checked })
+            });
+
+            closeModal();
+            loadEvents();
+        }
+    </script>
+</body>
+</html>
