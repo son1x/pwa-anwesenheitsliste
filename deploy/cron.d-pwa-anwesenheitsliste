@@ -1,0 +1,5 @@
+# Pull-Deployment für anwesenheitsliste.ministo.de (siehe /var/www/pwa-anwesenheitsliste/deploy/vserver-pull.sh)
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+DEPLOY_KEY=/root/.ssh/pwa_anwesenheitsliste_deploy_key
+*/5 * * * * root /var/www/pwa-anwesenheitsliste/deploy/vserver-pull.sh

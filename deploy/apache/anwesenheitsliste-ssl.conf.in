@@ -1,0 +1,31 @@
+# @DOMAIN@ (HTTPS) - PWA "Anwesenheitsliste" (PHP / SQLite).
+# Erzeugt von pwa-anwesenheitsliste/deploy/vserver-setup.sh aus deploy/apache/anwesenheitsliste-ssl.conf.in -
+# nicht von Hand ändern (Änderungen in der Vorlage, dann Setup erneut ausführen;
+# vserver-pull.sh wendet diese Vorlage NIE an).
+#
+# Apache bedient die PWA direkt (PHP, SQLite). Die .htaccess im Docroot leitet
+# /api/* zu api.php um. Datenbank liegt im Docroot/data/.
+<VirtualHost *:@HTTPS_PORT@>
+    ServerName @DOMAIN@
+
+    SSLEngine on
+    SSLCertificateFile @CERT@
+    SSLCertificateKeyFile @CERT_KEY@
+    @SSL_OPTS@
+
+    Header always set Strict-Transport-Security "max-age=31536000"
+
+    DocumentRoot @DOCROOT@
+    <Directory @DOCROOT@>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+        # PHP braucht Schreibrechte auf data/ für SQLite
+        <Directory @DOCROOT@/data>
+            Require all granted
+        </Directory>
+    </Directory>
+
+    ErrorLog @LOG_DIR@/anwesenheitsliste-error.log
+    CustomLog @LOG_DIR@/anwesenheitsliste-access.log combined
+</VirtualHost>

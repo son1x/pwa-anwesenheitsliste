@@ -1,0 +1,14 @@
+# @DOMAIN@ (Port 80) - nur Zertifikats-Prüfung + Umleitung auf HTTPS.
+# Erzeugt von pwa-anwesenheitsliste/deploy/vserver-setup.sh aus deploy/apache/anwesenheitsliste.conf.in - nicht von Hand ändern.
+<VirtualHost *:@HTTP_PORT@>
+    ServerName @DOMAIN@
+    Alias /.well-known/acme-challenge/ @ACME_DIR@/.well-known/acme-challenge/
+    <Directory @ACME_DIR@>
+        Options None
+        AllowOverride None
+        Require all granted
+    </Directory>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
+    RewriteRule ^ https://@DOMAIN@%{REQUEST_URI} [R=301,L]
+</VirtualHost>
