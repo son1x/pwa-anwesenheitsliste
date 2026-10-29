@@ -12,7 +12,10 @@ fi
 
 DOMAIN="${1:-anwesenheitsliste.ministo.de}"
 EMAIL="${2:-}"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}.$")" 2>/dev/null && pwd || pwd)"
+if [ -z "$SCRIPT_DIR" ] || [ "$SCRIPT_DIR" = "." ]; then
+    SCRIPT_DIR="/var/www/pwa-anwesenheitsliste"
+fi
 APP_DIR="/var/www/pwa-anwesenheitsliste"
 
 echo "== 1. Verschiebe Projekt nach $APP_DIR == "
