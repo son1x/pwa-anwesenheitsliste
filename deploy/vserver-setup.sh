@@ -42,6 +42,19 @@ DEPLOY_LOG="/var/log/pwa-anwesenheitsliste-deploy.log"
 
 export DEBIAN_FRONTEND=noninteractive
 
+# Wechsel des MPM (prefork → event) braucht einen echten Neustart; ein
+# "reload" kann außerdem abgebrochen werden, wenn apt gerade selbst einen
+# Neustart angestoßen hat ("Job for apache2.service canceled").
+APACHE_NEUSTART=0
+apache_laden() {
+    if [ "$APACHE_NEUSTART" = 1 ]; then
+        systemctl restart apache2
+        APACHE_NEUSTART=0
+        return
+    fi
+    systemctl reload apache2 || { sleep 3; systemctl restart apache2; }
+}
+
 main() {
 
 echo "== Pakete (Apache, certbot, git, PHP-FPM) =="
@@ -59,6 +72,7 @@ if ls /etc/apache2/mods-enabled/php*.load >/dev/null 2>&1; then
     if [ -e /etc/apache2/mods-enabled/mpm_prefork.load ]; then
         a2dismod -q mpm_prefork
         a2enmod -q mpm_event
+        APACHE_NEUSTART=1
     fi
 fi
 MOD_PHP_PAKETE=$(dpkg-query -W -f='${Package} ${db:Status-Abbrev}\n' 'libapache2-mod-php*' 2>/dev/null \
@@ -146,7 +160,7 @@ bash "$RENDERN" "$APP_DIR/deploy/apache/anwesenheitsliste.conf.in" DOMAIN="$DOMA
 mv "$SITE.neu" "$SITE"
 a2ensite -q anwesenheitsliste
 apache2ctl configtest
-systemctl reload apache2
+apache_laden
 
 echo "== TLS-Zertifikat (Let's Encrypt) =="
 CERT="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
@@ -186,7 +200,7 @@ bash "$RENDERN" "$APP_DIR/deploy/apache/anwesenheitsliste-ssl.conf.in" \
 mv "$SITE_SSL.neu" "$SITE_SSL"
 a2ensite -q anwesenheitsliste-ssl
 apache2ctl configtest
-systemctl reload apache2
+apache_laden
 
 echo "== Cronjob: alle 5 Minuten Updates holen =="
 touch "$DEPLOY_LOG"
