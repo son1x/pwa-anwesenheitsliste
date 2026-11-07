@@ -1,4 +1,19 @@
+Options -Indexes
+
 RewriteEngine On
+
+# Interne Dateien nie ausliefern (Git, Deploy-Skripte, alte Datenbank-Ablage)
+RewriteRule (^|/)\. - [R=404,L]
+RewriteRule ^(deploy|data)(/|$) - [R=404,L]
+RewriteRule ^(install\.sh|README\.md)$ - [R=404,L]
+
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^api/(.*)$ api.php?path=$1 [QSA,L]
+
+# Service Worker und App-Shell nicht zu lange cachen, damit Updates ankommen
+<IfModule mod_headers.c>
+    <FilesMatch "^(sw\.js|index\.html|manifest\.json)$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+</IfModule>

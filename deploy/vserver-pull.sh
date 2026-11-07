@@ -4,10 +4,10 @@
 # (/etc/cron.d/pwa-anwesenheitsliste, eingerichtet von deploy/vserver-setup.sh).
 #
 # Holt Branch main; bei neuem Commit "git reset --hard", version.json neu
-# schreiben und Apache neu laden. Keine npm-Abhängigkeiten - kein "npm ci" nötig.
+# schreiben und PHP-FPM neu laden (leert den OPcache). Keine npm-Abhängigkeiten.
 #
-# Code und Daten sind getrennt: die Datenbank liegt im Docroot/data/
-# und wird hier nie berührt. Die Apache-Vorlage in deploy/apache/ wendet NUR
+# Code und Daten sind getrennt: die Datenbank liegt in /var/lib/pwa-anwesenheitsliste
+# (außerhalb des Repos) und wird hier nie berührt. Die Apache-Vorlage in deploy/apache/ wendet NUR
 # das Setup-Skript an, nie dieses Skript.
 #
 #   vserver-pull.sh                 normaler Lauf (Cron)
@@ -70,7 +70,7 @@ main() {
         git reset -q --hard "origin/$BRANCH" >> "$LOG_FILE" 2>&1
         chmod -R u+rwX,go+rX,go-w "$REPO_DIR"
         version_schreiben
-        systemctl reload apache2 >> "$LOG_FILE" 2>&1 || log "Reload von apache2 fehlgeschlagen (systemctl reload apache2)"
+        systemctl reload 'php*-fpm.service' >> "$LOG_FILE" 2>&1 || log "Reload von PHP-FPM fehlgeschlagen"
         log "Deploy abgeschlossen: $(git rev-parse --short HEAD)"
     elif [ ! -f "$VERSION_FILE" ]; then
         version_schreiben

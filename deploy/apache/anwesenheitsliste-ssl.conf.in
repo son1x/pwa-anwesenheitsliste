@@ -3,8 +3,10 @@
 # nicht von Hand ändern (Änderungen in der Vorlage, dann Setup erneut ausführen;
 # vserver-pull.sh wendet diese Vorlage NIE an).
 #
-# Apache bedient die PWA direkt (PHP, SQLite). Die .htaccess im Docroot leitet
-# /api/* zu api.php um. Datenbank liegt im Docroot/data/.
+# Apache bedient die PWA direkt; PHP läuft über PHP-FPM (mpm_event bleibt für
+# die anderen Seiten auf dem Server unverändert). Die .htaccess im Docroot
+# leitet /api/* zu api.php um. Die Datenbank liegt AUSSERHALB des Docroots
+# (data_dir in /etc/pwa-anwesenheitsliste.ini).
 <VirtualHost *:@HTTPS_PORT@>
     ServerName @DOMAIN@
 
@@ -14,17 +16,25 @@
     @SSL_OPTS@
 
     Header always set Strict-Transport-Security "max-age=31536000"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "same-origin"
 
     DocumentRoot @DOCROOT@
     <Directory @DOCROOT@>
-        Options Indexes FollowSymLinks
+        Options -Indexes +FollowSymLinks
         AllowOverride All
         Require all granted
-        # PHP braucht Schreibrechte auf data/ für SQLite
-        <Directory @DOCROOT@/data>
-            Require all granted
-        </Directory>
+        DirectoryIndex index.html
     </Directory>
+
+    # Git-Daten, Deploy-Skripte und eine evtl. noch vorhandene alte
+    # Datenbank-Ablage nie ausliefern - auch falls die .htaccess fehlt.
+    <DirectoryMatch "^@DOCROOT@/(\.git|deploy|data)(/|$)">
+        Require all denied
+    </DirectoryMatch>
+    <FilesMatch "^(\.|install\.sh$)">
+        Require all denied
+    </FilesMatch>
 
     ErrorLog @LOG_DIR@/anwesenheitsliste-error.log
     CustomLog @LOG_DIR@/anwesenheitsliste-access.log combined

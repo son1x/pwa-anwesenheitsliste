@@ -1,7 +1,15 @@
 #!/bin/bash
 # install.sh - One-Click Setup für anwesenheitsliste.ministo.de
-# Führt das gesamte V-Server Setup vollautomatisch aus.
+# Holt das Repo nach /var/www/pwa-anwesenheitsliste und startet dann
+# deploy/vserver-setup.sh. Funktioniert auch per Pipe (curl ... | sudo bash).
+#
 # Aufruf: sudo bash install.sh [Domain] [Admin-Email]
+#
+# Beim ersten Lauf wird ein Deploy-Key erzeugt und ausgegeben: diesen bei
+# GitHub als Deploy Key (read-only) eintragen und install.sh erneut starten.
+#
+# Bestehende Daten werden nie gelöscht (kein rm -rf; die Datenbank liegt in
+# /var/lib/pwa-anwesenheitsliste).
 
 set -euo pipefail
 
@@ -13,39 +21,48 @@ fi
 DOMAIN="${1:-anwesenheitsliste.ministo.de}"
 EMAIL="${2:-}"
 APP_DIR="/var/www/pwa-anwesenheitsliste"
-REPO_URL="git@github.com:son1x/pwa-anwesenheitsliste.git"
-BRANCH="main"
+REPO_URL="${REPO_URL:-git@github.com:son1x/pwa-anwesenheitsliste.git}"
+BRANCH="${BRANCH:-main}"
 DEPLOY_KEY="${DEPLOY_KEY:-/root/.ssh/pwa_anwesenheitsliste_deploy_key}"
 
-echo "== 1. Deploy-Key erzeugen =="
-if [ ! -f "$DEPLOY_KEY" ]; then
-    mkdir -p /root/.ssh && chmod 700 /root/.ssh
-    ssh-keygen -q -t ed25519 -f "$DEPLOY_KEY" -N "" -C "vserver-deploy-pwa-anwesenheitsliste"
-fi
-export GIT_SSH_COMMAND="ssh -i $DEPLOY_KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+main() {
+    echo "== 1. Pakete für den Checkout (git, ssh) =="
+    if ! command -v git >/dev/null 2>&1 || ! command -v ssh >/dev/null 2>&1; then
+        apt-get update -y
+        DEBIAN_FRONTEND=noninteractive apt-get install -y git openssh-client ca-certificates
+    fi
 
-echo "== 2. Repository klonen nach $APP_DIR =="
-mkdir -p /var/www
-if [ ! -d "$APP_DIR/.git" ]; then
-    rm -rf "$APP_DIR"
-    git clone "$REPO_URL" "$APP_DIR"
+    echo "== 2. Deploy-Key =="
+    if [ ! -f "$DEPLOY_KEY" ]; then
+        mkdir -p /root/.ssh && chmod 700 /root/.ssh
+        ssh-keygen -q -t ed25519 -f "$DEPLOY_KEY" -N "" -C "vserver-deploy-pwa-anwesenheitsliste"
+    fi
+    export GIT_SSH_COMMAND="ssh -i $DEPLOY_KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+
+    echo "== 3. Repository holen ($BRANCH) nach $APP_DIR =="
+    mkdir -p "$APP_DIR"
     cd "$APP_DIR"
-    git checkout "$BRANCH"
-else
-    cd "$APP_DIR"
-    git fetch origin "$BRANCH"
+    [ -d .git ] || { git init -q; git remote add origin "$REPO_URL"; }
+    git remote set-url origin "$REPO_URL"
+    if ! git fetch -q origin "$BRANCH"; then
+        echo "" >&2
+        echo "!! GitHub-Zugriff fehlgeschlagen. Diesen Public Key bei GitHub unter" >&2
+        echo "!! son1x/pwa-anwesenheitsliste -> Settings -> Deploy keys (read-only) eintragen:" >&2
+        echo "" >&2
+        cat "${DEPLOY_KEY}.pub" >&2
+        echo "" >&2
+        echo "!! Danach install.sh einfach erneut ausführen." >&2
+        exit 1
+    fi
     git reset -q --hard "origin/$BRANCH"
-fi
-chown -R root:www-data "$APP_DIR"
-chmod -R u+rwX,go+rX,go-w "$APP_DIR"
-mkdir -p "$APP_DIR/data"
-chmod 775 "$APP_DIR/data"
-chown -R www-data:www-data "$APP_DIR/data"
-chmod 755 "$APP_DIR/deploy/vserver-pull.sh"
 
-echo "== 3. Starte vserver-setup.sh für $DOMAIN ==="
-bash "$APP_DIR/deploy/vserver-setup.sh" "$DOMAIN" "$EMAIL"
+    echo "== 4. Starte vserver-setup.sh für $DOMAIN =="
+    REPO_URL="$REPO_URL" BRANCH="$BRANCH" DEPLOY_KEY="$DEPLOY_KEY" \
+        bash "$APP_DIR/deploy/vserver-setup.sh" "$DOMAIN" "$EMAIL"
 
-echo ""
-echo "🚀 Installation erfolgreich abgeschlossen!"
-echo "🌐 URL: https://$DOMAIN"
+    echo ""
+    echo "Installation abgeschlossen: https://$DOMAIN"
+}
+
+# In einer Funktion, damit bash bei "curl | bash" das ganze Skript gelesen hat.
+main "$@"
